@@ -1,8 +1,46 @@
 package PerlX::MethodCallWithBlock;
-
 use strict;
 use warnings;
+use 5.010;
 our $VERSION = '0.01';
+
+use B::Hooks::Parser;
+use B::Hooks::EndOfScope;
+use B::Generate;
+
+sub inject_close_paren {
+    my $linestr = B::Hooks::Parser::get_linestr;
+    my $offset = B::Hooks::Parser::get_linestr_offset;
+    substr($linestr, $offset, 0) = ');';
+    B::Hooks::Parser::set_linestr($linestr);
+}
+
+sub block_checker {
+    my ($op) = shift;
+    my $linestr = B::Hooks::Parser::get_linestr;
+    my $offset = B::Hooks::Parser::get_linestr_offset;
+    my $code = substr($linestr, $offset);
+    return unless $code ~~ /^->(?<method_name>\w+)(?<method_args>\(.*\))\s+{/;
+    my $method_args = $+{method_args};
+    my $method_name = $+{method_name};
+
+    my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
+
+    $method_args =~ s/^\(//;
+    $method_args =~ s/\)$//;
+
+    $code = "->${method_name}($method_args, $injected_code";
+
+    substr($linestr, $offset) = $code;
+    B::Hooks::Parser::set_linestr($linestr);
+}
+
+sub import {
+    my $linestr = B::Hooks::Parser::get_linestr();
+    my $offset  = B::Hooks::Parser::get_linestr_offset();
+    substr($linestr, $offset, 0) = 'use B::Hooks::EndOfScope(); use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::block_checker;';
+    B::Hooks::Parser::set_linestr($linestr);
+}
 
 1;
 __END__
@@ -57,4 +95,3 @@ SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGES.
 
 =cut
-

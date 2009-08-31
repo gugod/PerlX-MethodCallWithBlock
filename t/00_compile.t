@@ -1,4 +1,10 @@
+#!/usr/bin/env perl
 use strict;
+use warnings;
+use 5.010;
+
 use Test::More tests => 1;
 
-BEGIN { use_ok 'PerlX::MethodCallWithBlock' }
+use PerlX::MethodCallWithBlock;
+
+pass "working";
