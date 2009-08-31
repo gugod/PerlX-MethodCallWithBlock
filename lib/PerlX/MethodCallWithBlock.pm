@@ -47,7 +47,7 @@ __END__
 
 =head1 NAME
 
-PerlX::MethodCallWithBlock - A Perl extension, allow method call with bare blocks afterward.
+PerlX::MethodCallWithBlock - A Perl extension to allow a bare block after method call
 
 =head1 SYNOPSIS
 
