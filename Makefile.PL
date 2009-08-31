@@ -19,4 +19,6 @@ build_requires
     "Test::Spelling"       => "0.11";
 
 auto_include;
+auto_set_repository;
+
 WriteAll;
