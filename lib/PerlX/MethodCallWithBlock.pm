@@ -47,21 +47,54 @@ __END__
 
 =head1 NAME
 
-PerlX::MethodCallWithBlock -
+PerlX::MethodCallWithBlock - A Perl extension, allow method call with bare blocks afterward.
 
 =head1 SYNOPSIS
 
-  use PerlX::MethodCallWithBlock;
+    use PerlX::MethodCallWithBlock;
+
+    Foo->bar(1, 2, 3) {
+      say "and a block";
+    };
 
 =head1 DESCRIPTION
 
-PerlX::MethodCallWithBlock is
+PerlX::MethodCallWithBlock is A Perl extension that extends Perl
+syntax to allow one bare block follows normal methods calls.
+
+It translate:
+
+    Foo->bar(1, 2, 3) {
+      say "and a block";
+    };
+
+Into:
+
+    Foo->bar(1, 2, 3, sub {
+      say "and a block";
+    });
+
+The body of the C<Foo::bar> method sees it as the very last argument.
+
+=head1 NOTICE
+
+This version is released as a proof that it can be done. However, the
+internally parsing code for translating codes are very fragile at this
+moment.
+
+Also this doesn't work yet:
+
+    Foo->bar {
+      say "and a block";
+    };
 
 =head1 AUTHOR
 
 Kang-min Liu E<lt>gugod@gugod.orgE<gt>
 
 =head1 SEE ALSO
+
+L<Rubyish>
 
 =head1 LICENSE AND COPYRIGHT
 
