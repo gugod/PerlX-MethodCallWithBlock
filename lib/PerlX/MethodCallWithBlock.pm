@@ -4,23 +4,23 @@ use warnings;
 use 5.010;
 our $VERSION = '0.02';
 
-use B::Hooks::Parser;
-use B::Hooks::EndOfScope;
-use B::Generate;
+use Devel::Declare ();
+use B::Hooks::EndOfScope ();
+
 use PPI;
 use PPI::Document;
 
 sub inject_close_paren {
-    my $linestr = B::Hooks::Parser::get_linestr;
-    my $offset = B::Hooks::Parser::get_linestr_offset;
+    my $linestr = Devel::Declare::get_linestr;
+    my $offset = Devel::Declare::get_linestr_offset;
     substr($linestr, $offset, 0) = ');';
-    B::Hooks::Parser::set_linestr($linestr);
+    Devel::Declare::set_linestr($linestr);
 }
 
 sub block_checker {
     my ($op, @args) = @_;
-    my $linestr = B::Hooks::Parser::get_linestr;
-    my $offset = B::Hooks::Parser::get_linestr_offset;
+    my $linestr = Devel::Declare::get_linestr;
+    my $offset = Devel::Declare::get_linestr_offset;
     my $code = substr($linestr, $offset);
 
     my $doc = PPI::Document->new(\$code);
@@ -43,7 +43,7 @@ sub block_checker {
                 $code = $node->content;
                 $code =~ s/\s*\{$/($injected_code/;
                 substr($linestr, $offset) = $code;
-                B::Hooks::Parser::set_linestr($linestr);
+                Devel::Declare::set_linestr($linestr);
             }
             elsif ($classes[0] eq 'PPI::Token::Operator'
                     && $children[0]->content eq '->'
@@ -57,7 +57,7 @@ sub block_checker {
                 $code .= $args;
 
                 substr($linestr, $offset) = $code;
-                B::Hooks::Parser::set_linestr($linestr);
+                Devel::Declare::set_linestr($linestr);
             }
         }
         elsif (@children == 5) {
@@ -77,7 +77,39 @@ sub block_checker {
                 $code .= $args;
 
                 substr($linestr, $offset) = $code;
-                B::Hooks::Parser::set_linestr($linestr);
+                Devel::Declare::set_linestr($linestr);
+            }
+        }
+    }
+    grep {
+        $_->class eq 'PPI::Statement'
+    } $doc->schildren;
+}
+
+sub pushmark_checker {
+    my ($op, @args) = @_;
+    my $offset = Devel::Declare::get_linestr_offset;
+    $offset += Devel::Declare::toke_skipspace($offset);
+    my $linestr = Devel::Declare::get_linestr;
+    my $code = substr($linestr, $offset);
+    my $doc = PPI::Document->new(\$code);
+
+    map {
+        my $node = $_;
+        my @children = $node->schildren;
+        my @classes = map { $_->class } @children;
+        if (@children == 4) {
+            if ($classes[0] eq 'PPI::Token::Symbol'
+                    && $classes[1] eq 'PPI::Token::Operator'
+                    && $children[1]->content eq '->'
+                    && $classes[2] eq 'PPI::Token::Word'
+                    && $classes[3] eq 'PPI::Structure::Block'
+            ) {
+                my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
+                $code = join "", map { $_->content } @children[0,1,2];
+                $code .= "($injected_code";
+                substr($linestr, $offset) = $code;
+                Devel::Declare::set_linestr($linestr);
             }
         }
     }
@@ -87,10 +119,11 @@ sub block_checker {
 }
 
 sub import {
-    my $linestr = B::Hooks::Parser::get_linestr();
-    my $offset  = B::Hooks::Parser::get_linestr_offset();
-    substr($linestr, $offset, 0) = 'use B::Hooks::EndOfScope(); use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::block_checker;';
-    B::Hooks::Parser::set_linestr($linestr);
+    my $linestr = Devel::Declare::get_linestr();
+    my $offset  = Devel::Declare::get_linestr_offset();
+
+    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::block_checker;use B::OPCheck pushmark => check => \&PerlX::MethodCallWithBlock::pushmark_checker;];
+    Devel::Declare::set_linestr($linestr);
 }
 
 1;
