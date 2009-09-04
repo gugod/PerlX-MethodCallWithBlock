@@ -16,23 +16,30 @@ sub inject_close_paren {
 }
 
 sub block_checker {
-    my ($op) = shift;
+    my ($op, @args) = @_;
     my $linestr = B::Hooks::Parser::get_linestr;
     my $offset = B::Hooks::Parser::get_linestr_offset;
     my $code = substr($linestr, $offset);
-    return unless $code ~~ /^->(?<method_name>\w+)(?<method_args>\(.*\))\s+{/;
-    my $method_args = $+{method_args};
-    my $method_name = $+{method_name};
 
     my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
 
-    $method_args =~ s/^\(//;
-    $method_args =~ s/\)$//;
+    if ($code ~~ /^(\w+->\w+)\s+\{/) {
+        $code = "$1($injected_code";
+        substr($linestr, $offset) = $code;
+        B::Hooks::Parser::set_linestr($linestr);
+    }
+    elsif ($code ~~ /^->(?<method_name>\w+)(?<method_args>\(.*\))\s+{/) {
+        my $method_args = $+{method_args};
+        my $method_name = $+{method_name};
 
-    $code = "->${method_name}($method_args, $injected_code";
+        $method_args =~ s/^\(//;
+        $method_args =~ s/\)$//;
 
-    substr($linestr, $offset) = $code;
-    B::Hooks::Parser::set_linestr($linestr);
+        $code = "->${method_name}($method_args, $injected_code";
+
+        substr($linestr, $offset) = $code;
+        B::Hooks::Parser::set_linestr($linestr);
+    }
 }
 
 sub import {
