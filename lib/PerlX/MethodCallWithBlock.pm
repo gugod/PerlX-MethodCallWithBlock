@@ -24,6 +24,7 @@ sub block_checker {
     my $code = substr($linestr, $offset);
 
     my $doc = PPI::Document->new(\$code);
+    return unless $doc;
 
     my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
 
@@ -86,7 +87,7 @@ sub block_checker {
     } $doc->schildren;
 }
 
-sub pushmark_checker {
+sub lineseq_checker {
     my ($op, @args) = @_;
     my $offset = Devel::Declare::get_linestr_offset;
     $offset += Devel::Declare::toke_skipspace($offset);
@@ -122,7 +123,7 @@ sub import {
     my $linestr = Devel::Declare::get_linestr();
     my $offset  = Devel::Declare::get_linestr_offset();
 
-    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::block_checker;use B::OPCheck pushmark => check => \&PerlX::MethodCallWithBlock::pushmark_checker;];
+    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::block_checker;use B::OPCheck lineseq => check => \&PerlX::MethodCallWithBlock::lineseq_checker;];
     Devel::Declare::set_linestr($linestr);
 }
 
