@@ -2,7 +2,7 @@ package PerlX::MethodCallWithBlock;
 use strict;
 use warnings;
 use 5.010;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use B::Hooks::Parser;
 use B::Hooks::EndOfScope;
@@ -88,12 +88,6 @@ The body of the C<Foo::bar> method sees it as the very last argument.
 This version is released as a proof that it can be done. However, the
 internally parsing code for translating codes are very fragile at this
 moment.
-
-Also this doesn't work yet:
-
-    Foo->bar {
-      say "and a block";
-    };
 
 =head1 AUTHOR
 
