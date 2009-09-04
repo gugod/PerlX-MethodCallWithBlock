@@ -13,7 +13,7 @@ use PPI::Document;
 sub inject_close_paren {
     my $linestr = Devel::Declare::get_linestr;
     my $offset = Devel::Declare::get_linestr_offset;
-    substr($linestr, $offset, 0) = ');';
+    substr($linestr, $offset, 0) = ')';
     Devel::Declare::set_linestr($linestr);
 }
 
@@ -99,14 +99,28 @@ sub lineseq_checker {
         my $node = $_;
         my @children = $node->schildren;
         my @classes = map { $_->class } @children;
-        if (@children == 4) {
+
+        my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
+
+        if (@children == 3) {
+            if ($classes[0] eq 'PPI::Token::Operator'
+                    && $children[0]->content eq '->'
+                    && $classes[1] eq 'PPI::Token::Word'
+                    && $classes[2] eq 'PPI::Structure::Block'
+            ) {
+                $code = join "", map { $_->content } @children[0,1];
+                $code .= "($injected_code";
+                substr($linestr, $offset) = $code;
+                Devel::Declare::set_linestr($linestr);
+            }
+        }
+        elsif (@children == 4) {
             if ($classes[0] eq 'PPI::Token::Symbol'
                     && $classes[1] eq 'PPI::Token::Operator'
                     && $children[1]->content eq '->'
                     && $classes[2] eq 'PPI::Token::Word'
                     && $classes[3] eq 'PPI::Structure::Block'
             ) {
-                my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
                 $code = join "", map { $_->content } @children[0,1,2];
                 $code .= "($injected_code";
                 substr($linestr, $offset) = $code;
