@@ -6,7 +6,8 @@ requires
     "B::Generate"          => "1.20",
     "B::Hooks::EndOfScope" => "0.08",
     "B::Hooks::Parser"     => "0.09",
-    'B::OPCheck' => 0.28
+    'B::OPCheck' => 0.28,
+    "PPI" => 1.203,
 ;
 
 tests 't/*.t';
