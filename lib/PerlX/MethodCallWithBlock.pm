@@ -7,6 +7,8 @@ our $VERSION = '0.02';
 use B::Hooks::Parser;
 use B::Hooks::EndOfScope;
 use B::Generate;
+use PPI;
+use PPI::Document;
 
 sub inject_close_paren {
     my $linestr = B::Hooks::Parser::get_linestr;
@@ -21,25 +23,67 @@ sub block_checker {
     my $offset = B::Hooks::Parser::get_linestr_offset;
     my $code = substr($linestr, $offset);
 
+    my $doc = PPI::Document->new(\$code);
+
     my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
 
-    if ($code ~~ /^(\w+->\w+)\s+\{/) {
-        $code = "$1($injected_code";
-        substr($linestr, $offset) = $code;
-        B::Hooks::Parser::set_linestr($linestr);
+    map {
+        my $node = $_;
+        my @children = $node->schildren;
+        my @classes = map { $_->class } @children;
+
+        if (@children == 4) {
+            # find something looks like "Foo::Bar->baz {"
+            if ($classes[0] eq 'PPI::Token::Word'
+                    && $classes[1] eq 'PPI::Token::Operator'
+                    && $children[1]->content eq '->'
+                    && $classes[2] eq 'PPI::Token::Word'
+                    && $classes[3] eq 'PPI::Structure::Block'
+            ) {
+                $code = $node->content;
+                $code =~ s/\s*\{$/($injected_code/;
+                substr($linestr, $offset) = $code;
+                B::Hooks::Parser::set_linestr($linestr);
+            }
+            elsif ($classes[0] eq 'PPI::Token::Operator'
+                    && $children[0]->content eq '->'
+                    && $classes[1] eq 'PPI::Token::Word'
+                    && $classes[2] eq 'PPI::Structure::List'
+                    && $classes[3] eq 'PPI::Structure::Block'
+            ) {
+                $code = $children[0]->content . $children[1]->content;
+                my $args = $children[2]->content;
+                $args =~ s/\)$/,$injected_code/;
+                $code .= $args;
+
+                substr($linestr, $offset) = $code;
+                B::Hooks::Parser::set_linestr($linestr);
+            }
+        }
+        elsif (@children == 5) {
+            # find something looks like "Foo::Bar->baz(...) {"
+            if ($classes[0] eq 'PPI::Token::Word'
+                    && $classes[1] eq 'PPI::Token::Operator'
+                    && $children[1]->content eq '->'
+                    && $classes[2] eq 'PPI::Token::Word'
+                    && $classes[3] eq 'PPI::Structure::List'
+                    && $classes[4] eq 'PPI::Structure::Block'
+            ) {
+                $code = $children[0]->content
+                    . $children[1]->content
+                    . $children[2]->content;
+                my $args = $children[3]->content;
+                $args =~ s/\)$/,$injected_code/;
+                $code .= $args;
+
+                substr($linestr, $offset) = $code;
+                B::Hooks::Parser::set_linestr($linestr);
+            }
+        }
     }
-    elsif ($code ~~ /^->(?<method_name>\w+)(?<method_args>\(.*\))\s+{/) {
-        my $method_args = $+{method_args};
-        my $method_name = $+{method_name};
-
-        $method_args =~ s/^\(//;
-        $method_args =~ s/\)$//;
-
-        $code = "->${method_name}($method_args, $injected_code";
-
-        substr($linestr, $offset) = $code;
-        B::Hooks::Parser::set_linestr($linestr);
-    }
+    grep {
+        $_->class eq 'PPI::Statement'
+    } $doc->schildren;
 }
 
 sub import {
@@ -88,6 +132,12 @@ The body of the C<Foo::bar> method sees it as the very last argument.
 This version is released as a proof that it can be done. However, the
 internally parsing code for translating codes are very fragile at this
 moment.
+
+Also this is not working yet:
+
+    $obj->some_method {
+        ...
+    };
 
 =head1 AUTHOR
 
