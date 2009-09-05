@@ -12,17 +12,23 @@ use Test::More;
 use PerlX::MethodCallWithBlock;
 
 Ping::Pong->ping {
-    pass "pong"
+    pass "pong";
+    my $caller = caller ;
+    is $caller, "Ping::Pong", "called from Ping::Pong";
 };
 
 Ping::Pong->ping(42) {
-    pass "pong"
+    pass "pong";
+    my $caller = caller ;
+    is $caller, "Ping::Pong", "called from Ping::Pong";
 };
 
 my $pp = bless{}, "Ping::Pong";
 
 $pp->ping(42) {
-    pass "pong"
+    pass "pong";
+    my $caller = caller ;
+    is $caller, "Ping::Pong", "called from Ping::Pong";
 };
 
 done_testing;
