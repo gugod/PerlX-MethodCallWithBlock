@@ -94,43 +94,35 @@ sub lineseq_checker {
     my $linestr = Devel::Declare::get_linestr;
     my $code = substr($linestr, $offset);
     my $doc = PPI::Document->new(\$code);
+    $doc->index_locations;
 
-    map {
-        my $node = $_;
-        my @children = $node->schildren;
-        my @classes = map { $_->class } @children;
-
-        my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
-
-        if (@children == 3) {
-            if ($classes[0] eq 'PPI::Token::Operator'
-                    && $children[0]->content eq '->'
-                    && $classes[1] eq 'PPI::Token::Word'
-                    && $classes[2] eq 'PPI::Structure::Block'
-            ) {
-                $code = join "", map { $_->content } @children[0,1];
-                $code .= "($injected_code";
-                substr($linestr, $offset) = $code;
-                Devel::Declare::set_linestr($linestr);
-            }
+    # find the structure of "->method {"
+    my $found = $doc->find(
+        sub {
+            my $el = $_[1];
+            return 0 unless $el->class eq 'PPI::Token::Operator' && $el->content eq '->';
+            my $word = $el->snext_sibling or return 0;
+            my $block = $word->snext_sibling or return 0;
+            return 1;
         }
-        elsif (@children == 4) {
-            if ($classes[0] eq 'PPI::Token::Symbol'
-                    && $classes[1] eq 'PPI::Token::Operator'
-                    && $children[1]->content eq '->'
-                    && $classes[2] eq 'PPI::Token::Word'
-                    && $classes[3] eq 'PPI::Structure::Block'
-            ) {
-                $code = join "", map { $_->content } @children[0,1,2];
-                $code .= "($injected_code";
-                substr($linestr, $offset) = $code;
-                Devel::Declare::set_linestr($linestr);
-            }
+    );
+    return unless $found;
+
+    my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
+
+    my $pnode;
+    $code = "";
+    for my $node (@$found) {
+        $pnode = $node;
+        while($pnode = $pnode->previous_sibling) {
+            $code = $pnode->content . $code;
         }
+        $code .= join "", map { $_->content } ($node, $node->snext_sibling);
+        $code .= "($injected_code";
+
+        substr($linestr, $offset) = $code;
+        Devel::Declare::set_linestr($linestr);
     }
-    grep {
-        $_->class eq 'PPI::Statement'
-    } $doc->schildren;
 }
 
 sub import {
