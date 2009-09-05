@@ -85,6 +85,8 @@ sub lineseq_checker {
     $offset += Devel::Declare::toke_skipspace($offset);
     my $linestr = Devel::Declare::get_linestr;
     my $code = substr($linestr, $offset);
+    my $original_code_length = length($code);
+
     my $doc = PPI::Document->new(\$code);
     $doc->index_locations;
 
@@ -102,8 +104,9 @@ sub lineseq_checker {
     );
     return unless $found;
 
-    my $injected_code = 'sub { BEGIN { B::Hooks::EndOfScope::on_scope_end(\&PerlX::MethodCallWithBlock::inject_close_paren); }';
+    my $injected_code = "BEGIN { B::Hooks::EndOfScope::on_scope_end(\\&PerlX::MethodCallWithBlock::inject_close_paren); };\n";
 
+    my $original_code = $code;
     my $pnode;
     $code = "";
     for my $node (@$found) {
@@ -112,9 +115,27 @@ sub lineseq_checker {
             $code = $pnode->content . $code;
         }
         $code .= join "", map { $_->content } ($node, $node->snext_sibling);
-        $code .= "($injected_code";
 
-        substr($linestr, $offset) = $code;
+        my $block = $node->snext_sibling->snext_sibling;
+        my @block_elements = $block->elements;
+
+        # one-line block, we see the whole thing here.
+        if ($block_elements[0] eq '{' && $block_elements[-1] eq '}') {
+            my $block_code = $node->snext_sibling->snext_sibling->content;
+            $code .= "(sub $block_code)";
+
+            # There might be something more after the block...
+            my $next_node = $block->next_sibling;
+            while ($next_node) {
+                $code .= $next_node->content;
+                $next_node = $next_node->next_sibling;
+            }
+        }
+        else {
+            $code .= "(sub {$injected_code";
+        }
+
+        substr($linestr, $offset, $original_code_length) = $code;
         Devel::Declare::set_linestr($linestr);
     }
 }

@@ -1,4 +1,5 @@
 package Echo;
+use strict;
 use Test::More;
 sub say {
     my $cb = pop;
