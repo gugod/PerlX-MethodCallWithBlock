@@ -102,7 +102,9 @@ sub lineseq_checker {
             my $el = $_[1];
             return 0 unless $el->class eq 'PPI::Token::Operator' && $el->content eq '->';
             my $word = $el->snext_sibling or return 0;
+            return 0 unless $word->class eq 'PPI::Token::Word';
             my $block = $word->snext_sibling or return 0;
+            return 0 unless $block->class eq 'PPI::Structure::Block';
             return 1;
         }
     );
