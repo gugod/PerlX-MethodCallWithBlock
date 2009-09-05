@@ -1,5 +1,9 @@
 Revision history for Perl extension PerlX::MethodCallWithBlock
 
+0.03
+- cool reading example code!
+- reimplement with the $doc->find method from PPI for easier logic
+
 0.02
 - make it works when no arg list is given
 - reimplement the parsing part with PPI

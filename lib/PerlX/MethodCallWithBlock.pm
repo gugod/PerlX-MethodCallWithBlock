@@ -2,7 +2,7 @@ package PerlX::MethodCallWithBlock;
 use strict;
 use warnings;
 use 5.010;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Devel::Declare ();
 use B::Hooks::EndOfScope ();
@@ -167,11 +167,9 @@ This version is released as a proof that it can be done. However, the
 internally parsing code for translating codes are very fragile at this
 moment.
 
-Also this is not working yet:
-
-    $obj->some_method {
-        ...
-    };
+It's very possible that your code breaks after you re-indent it. You
+should send me that piece of code as a failing test if you find such
+cases.
 
 =head1 AUTHOR
 
