@@ -17,7 +17,7 @@ sub inject_close_paren {
     Devel::Declare::set_linestr($linestr);
 }
 
-sub block_checker {
+sub const_checker {
     my ($op, @args) = @_;
     my $linestr = Devel::Declare::get_linestr;
     my $offset = Devel::Declare::get_linestr_offset;
@@ -137,7 +137,7 @@ sub import {
     my $linestr = Devel::Declare::get_linestr();
     my $offset  = Devel::Declare::get_linestr_offset();
 
-    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::block_checker;use B::OPCheck lineseq => check => \&PerlX::MethodCallWithBlock::lineseq_checker;];
+    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::const_checker;use B::OPCheck lineseq => check => \&PerlX::MethodCallWithBlock::lineseq_checker;];
     Devel::Declare::set_linestr($linestr);
 }
 
