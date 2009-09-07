@@ -2,9 +2,9 @@
 use strict;
 use 5.010;
 use lib 't/lib';
+use PerlX::MethodCallWithBlock;
 use Test::More;
 use Echo;
-use PerlX::MethodCallWithBlock;
 
 Echo->say {
     pass "the block after bar is called";

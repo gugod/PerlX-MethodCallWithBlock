@@ -17,10 +17,14 @@ sub inject_close_paren {
     Devel::Declare::set_linestr($linestr);
 }
 
-sub const_checker {
+sub checker {
     my ($op, @args) = @_;
-    my $linestr = Devel::Declare::get_linestr;
     my $offset = Devel::Declare::get_linestr_offset;
+    $offset += Devel::Declare::toke_skipspace($offset);
+    my $linestr = Devel::Declare::get_linestr;
+
+    return if $offset > length($linestr);
+
     my $code = substr($linestr, $offset);
 
     my $doc = PPI::Document->new(\$code);
@@ -66,7 +70,22 @@ sub const_checker {
         $code .= join "", map { $_->content } ($node, $node->snext_sibling);
         my $word = $node->snext_sibling;
         if ($word->snext_sibling->class eq 'PPI::Structure::Block') {
-            $code .= "($injected_code";
+            my $block = $word->snext_sibling;
+            my @block_elements = $block->elements;
+            # one-line block, we see the whole thing here.
+            if ($block_elements[0] eq '{' && $block_elements[-1] eq '}') {
+                my $block_code = $node->snext_sibling->snext_sibling->content;
+                $code .= "(sub $block_code)";
+
+                # There might be something more after the block...
+                my $next_node = $block->next_sibling;
+                while ($next_node) {
+                    $code .= $next_node->content;
+                    $next_node = $next_node->next_sibling;
+                }
+            } else {
+                $code .= "($injected_code";
+            }
         }
         else {
             my $args = $word->snext_sibling->content;
@@ -79,72 +98,11 @@ sub const_checker {
     }
 }
 
-sub lineseq_checker {
-    my ($op, @args) = @_;
-    my $offset = Devel::Declare::get_linestr_offset;
-    $offset += Devel::Declare::toke_skipspace($offset);
-    my $linestr = Devel::Declare::get_linestr;
-    my $code = substr($linestr, $offset);
-    my $original_code_length = length($code);
-
-    my $doc = PPI::Document->new(\$code);
-    $doc->index_locations;
-
-    # find the structure of "->method {"
-    my $found = $doc->find(
-        sub {
-            my $el = $_[1];
-            return 0 unless $el->class eq 'PPI::Token::Operator' && $el->content eq '->';
-            my $word = $el->snext_sibling or return 0;
-            return 0 unless $word->class eq 'PPI::Token::Word';
-            my $block = $word->snext_sibling or return 0;
-            return 0 unless $block->class eq 'PPI::Structure::Block';
-            return 1;
-        }
-    );
-    return unless $found;
-
-    my $injected_code = "BEGIN { B::Hooks::EndOfScope::on_scope_end(\\&PerlX::MethodCallWithBlock::inject_close_paren); };\n";
-
-    my $original_code = $code;
-    my $pnode;
-    $code = "";
-    for my $node (@$found) {
-        $pnode = $node;
-        while($pnode = $pnode->previous_sibling) {
-            $code = $pnode->content . $code;
-        }
-        $code .= join "", map { $_->content } ($node, $node->snext_sibling);
-
-        my $block = $node->snext_sibling->snext_sibling;
-        my @block_elements = $block->elements;
-
-        # one-line block, we see the whole thing here.
-        if ($block_elements[0] eq '{' && $block_elements[-1] eq '}') {
-            my $block_code = $node->snext_sibling->snext_sibling->content;
-            $code .= "(sub $block_code)";
-
-            # There might be something more after the block...
-            my $next_node = $block->next_sibling;
-            while ($next_node) {
-                $code .= $next_node->content;
-                $next_node = $next_node->next_sibling;
-            }
-        }
-        else {
-            $code .= "(sub {$injected_code";
-        }
-
-        substr($linestr, $offset, $original_code_length) = $code;
-        Devel::Declare::set_linestr($linestr);
-    }
-}
-
 sub import {
     my $linestr = Devel::Declare::get_linestr();
     my $offset  = Devel::Declare::get_linestr_offset();
 
-    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::const_checker;use B::OPCheck lineseq => check => \&PerlX::MethodCallWithBlock::lineseq_checker;];
+    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::checker;use B::OPCheck lineseq => check => \&PerlX::MethodCallWithBlock::checker;] . "\n";
     Devel::Declare::set_linestr($linestr);
 }
 
