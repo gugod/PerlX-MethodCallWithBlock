@@ -3,6 +3,7 @@ name 'PerlX-MethodCallWithBlock';
 all_from 'lib/PerlX/MethodCallWithBlock.pm';
 
 requires
+    "autobox"              => "2.55",
     "B::Hooks::EndOfScope" => "0.08",
     "Devel::Declare"       => "0.005011",
     'B::OPCheck'           => "0.28",
