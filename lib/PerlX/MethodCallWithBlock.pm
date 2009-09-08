@@ -93,7 +93,6 @@ sub checker {
             $args =~ s/\)$/,$injected_code/;
             $code .= $args;
         }
-
         substr($linestr, $offset) = $code;
         Devel::Declare::set_linestr($linestr);
     }
@@ -110,7 +109,7 @@ sub import {
 
     *{$caller ."::__px_mcwb_checker"} = \&checker;
 
-    substr($linestr, $offset, 0) = q[BEGIN { B::OPCheck->import($_ => check => \&__px_mcwb_checker) for qw(const pushmark lineseq); }];
+    substr($linestr, $offset, 0) = q[BEGIN { B::OPCheck->import($_ => check => \&__px_mcwb_checker) for qw(const pushmark lineseq refgen sassign); }];
     Devel::Declare::set_linestr($linestr);
 
     *{$caller ."::__px_mcwb_checker"} = $orig_checker;
