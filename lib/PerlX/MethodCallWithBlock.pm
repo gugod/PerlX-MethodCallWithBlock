@@ -103,16 +103,8 @@ sub import {
     my $offset  = Devel::Declare::get_linestr_offset();
     my $linestr = Devel::Declare::get_linestr();
 
-    no strict;
-
-    my $orig_checker = *{$caller ."::__px_mcwb_checker"};
-
-    *{$caller ."::__px_mcwb_checker"} = \&checker;
-
-    substr($linestr, $offset, 0) = q[BEGIN { B::OPCheck->import($_ => check => \&__px_mcwb_checker) for qw(const pushmark lineseq refgen sassign); }];
+    substr($linestr, $offset, 0) = q[BEGIN { B::OPCheck->import($_ => check => \&PerlX::MethodCallWithBlock::checker) for qw(const pushmark lineseq refgen sassign); }];
     Devel::Declare::set_linestr($linestr);
-
-    *{$caller ."::__px_mcwb_checker"} = $orig_checker;
 }
 
 1;
