@@ -6,6 +6,7 @@ our $VERSION = '0.03';
 
 use Devel::Declare ();
 use B::Hooks::EndOfScope ();
+use B::OPCheck ();
 
 use PPI;
 use PPI::Document;
@@ -99,11 +100,20 @@ sub checker {
 }
 
 sub import {
-    my $linestr = Devel::Declare::get_linestr();
+    my $caller = caller;
     my $offset  = Devel::Declare::get_linestr_offset();
+    my $linestr = Devel::Declare::get_linestr();
 
-    substr($linestr, $offset, 0) = q[use B::OPCheck const => check => \&PerlX::MethodCallWithBlock::checker;use B::OPCheck lineseq => check => \&PerlX::MethodCallWithBlock::checker;] . "\n";
+    no strict;
+
+    my $orig_checker = *{$caller ."::__px_mcwb_checker"};
+
+    *{$caller ."::__px_mcwb_checker"} = \&checker;
+
+    substr($linestr, $offset, 0) = q[BEGIN { B::OPCheck->import($_ => check => \&__px_mcwb_checker) for qw(const pushmark lineseq); }];
     Devel::Declare::set_linestr($linestr);
+
+    *{$caller ."::__px_mcwb_checker"} = $orig_checker;
 }
 
 1;
