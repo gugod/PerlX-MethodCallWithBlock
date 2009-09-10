@@ -2,13 +2,23 @@
 use strict;
 use warnings;
 use lib '../lib';
-use PerlX::MethodCallWithBlock;
-use autobox::Core;
-use Perl6::Say;
+use 5.010;
 
-my $x = [0..10];
-$x->map {
-    2 * $_
-}->map {
-    $_ + 1
-}->each(\&say);
+use PerlX::MethodCallWithBlock;
+use autobox;
+use autobox::Core;
+
+my $data = [];
+while(<DATA>) { chomp; push @$data, $_ };
+
+my $sorted = $data->map { [$_, split/[: ]/] }
+    ->sort { $_[0]->[-1] cmp $_[1]->[-1] }
+    ->map  { $$_[0] };
+
+$sorted->each{say @_};
+
+__DATA__
+admin:Charlie Root
+gugod:Kang-min Liu
+ingy:Ingy dot Net
+miyagawa:Miyagawa Tatsuhiko
