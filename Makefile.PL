@@ -11,14 +11,14 @@ requires
     "PPI"                  => "1.203"
 ;
 
-tests 't/*.t';
-author_tests 'xt';
-
 build_requires
     "Test::More"           => "0.92",
     "Test::Perl::Critic"   => "1.01",
     "Test::Pod"            => "1.40",
     "Test::Spelling"       => "0.11";
+
+tests 't/*.t';
+author_tests 'xt';
 
 auto_include;
 auto_set_repository;
