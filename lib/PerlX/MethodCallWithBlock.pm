@@ -1,8 +1,8 @@
 package PerlX::MethodCallWithBlock;
 use strict;
 use warnings;
-use 5.010;
-our $VERSION = '0.04';
+use 5.008001;
+our $VERSION = '0.05';
 
 use Devel::Declare ();
 use B::Hooks::EndOfScope ();

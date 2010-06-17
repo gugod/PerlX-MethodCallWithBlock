@@ -1,5 +1,8 @@
 Revision history for Perl extension PerlX::MethodCallWithBlock
 
+0.05
+- Fix dependencies
+
 0.04
 - make sure it work with autobox, autobox::Core
 - slightly reduce the chance to see the message "PL_linestr is not long enough"
